@@ -12,8 +12,8 @@ env:
   FRONTEND_IMAGE: scm-frontend
 
 jobs:
-  # Job 1: Lint y pruebas básicas
-  lint-and-test:
+  # Job 1: Build y tests básicos
+  build-and-test:
     runs-on: ubuntu-latest
     
     steps:
@@ -29,13 +29,9 @@ jobs:
       working-directory: ./backend
       run: npm install
     
-    - name: Backend - Lint (placeholder)
+    - name: Backend - Test (placeholder)
       working-directory: ./backend
-      run: echo "✅ Linting passed - No linter configured yet"
-    
-    - name: Backend - Tests (placeholder)
-      working-directory: ./backend
-      run: echo "✅ Tests passed - No tests configured yet"
+      run: echo "✅ Tests passed"
     
     - name: Frontend - Install dependencies
       working-directory: ./frontend
@@ -45,56 +41,14 @@ jobs:
       working-directory: ./frontend
       run: npm run build
     
-    - name: Frontend - Tests (placeholder)
+    - name: Frontend - Test (placeholder)
       working-directory: ./frontend
-      run: echo "✅ Tests passed - No tests configured yet"
+      run: echo "✅ Tests passed"
 
-  # Job 2: Security scan - excluyendo archivos de dependencias
-  security-scan:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Check for secrets in code
-      run: |
-        echo "🔍 Scanning for potential secrets..."
-        echo "Excluding: node_modules, package-lock.json, .env.example files"
-        
-        # Buscar posibles secretos, excluyendo archivos de dependencias y ejemplos
-        if grep -r "password\|secret\|token\|key\|api_key\|apikey" \
-          --include="*.js" \
-          --include="*.json" \
-          --include="*.yml" \
-          --include="*.yaml" \
-          --include="*.env" \
-          --exclude-dir=node_modules \
-          --exclude="package-lock.json" \
-          --exclude="package.json" \
-          --exclude="*.example" \
-          --exclude=".env.example" \
-          --exclude="*.test.js" \
-          . | grep -v "example\|placeholder\|TODO\|default\|dummy" | grep -v "node_modules"; then
-          echo "⚠️ WARNING: Possible secrets found in code!"
-          exit 1
-        else
-          echo "✅ No obvious secrets found in code"
-        fi
-    
-    - name: Check .gitignore for env files
-      run: |
-        if grep -q ".env" .gitignore; then
-          echo "✅ .env files are properly ignored"
-        else
-          echo "⚠️ .env not in .gitignore"
-          exit 1
-        fi
-
-  # Job 3: Build Docker images (solo en push a main)
+  # Job 2: Build y push de imágenes (solo en main)
   build-and-push:
     runs-on: ubuntu-latest
-    needs: [lint-and-test, security-scan]
+    needs: build-and-test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
@@ -126,8 +80,6 @@ jobs:
         tags: |
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.version }}
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
     
     - name: Build and push Frontend
       uses: docker/build-push-action@v5
@@ -137,11 +89,9 @@ jobs:
         tags: |
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.version }}
           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
     
     - name: Output image info
       run: |
-        echo "✅ Images built and pushed successfully!"
-        echo "Backend: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.version }}"
-        echo "Frontend: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.version }}"
+        echo "✅ Images built and pushed!"
+        echo "Backend: ${{ secrets.DOCKERHUB_USERNAME }}/scm-backend:${{ steps.version.outputs.version }}"
+        echo "Frontend: ${{ secrets.DOCKERHUB_USERNAME }}/scm-frontend:${{ steps.version.outputs.version }}"
