@@ -1,13 +1,66 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SCM Ops Blueprint - Configuration Management</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SCM Ops Blueprint - TODO App</title>
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .task { padding: 10px; margin: 5px 0; background: #f0f0f0; border-radius: 5px; }
+        .completed { text-decoration: line-through; color: green; }
+        button { margin-left: 10px; }
+    </style>
+</head>
+<body>
+    <h1>📋 SCM Ops Blueprint</h1>
+    <p><strong>Entorno:</strong> <span id="env">cargando...</span></p>
+    <p><strong>Versión API:</strong> <span id="version">-</span></p>
+    
+    <input type="text" id="newTask" placeholder="Nueva tarea...">
+    <button onclick="addTask()">Agregar</button>
+    
+    <h2>Mis tareas:</h2>
+    <div id="tasks"></div>
+
+    <script>
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:3000' 
+            : 'https://' + window.location.hostname.replace(/^frontend/, 'api');
+        
+        async function loadTasks() {
+            const res = await fetch(`${API_URL}/tasks`);
+            const tasks = await res.json();
+            const container = document.getElementById('tasks');
+            container.innerHTML = tasks.map(task => `
+                <div class="task ${task.completed ? 'completed' : ''}">
+                    ${task.title}
+                    ${!task.completed ? `<button onclick="completeTask(${task.id})">✓</button>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        async function addTask() {
+            const input = document.getElementById('newTask');
+            await fetch(`${API_URL}/tasks`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({title: input.value})
+            });
+            input.value = '';
+            loadTasks();
+        }
+        
+        async function completeTask(id) {
+            await fetch(`${API_URL}/tasks/${id}`, {method: 'PUT'});
+            loadTasks();
+        }
+        
+        fetch(`${API_URL}/health`)
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('env').innerText = window.location.hostname;
+                document.getElementById('version').innerText = data.version || 'v1.0.0';
+            });
+        
+        loadTasks();
+    </script>
+</body>
 </html>
